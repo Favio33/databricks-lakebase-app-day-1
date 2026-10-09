@@ -2,76 +2,324 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Massive Stock Watchlist</title>
   <style>
-    body { font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 60px auto; color: #222; }
-    h1 { font-size: 20px; }
-    label { display: block; margin-top: 16px; font-weight: 600; }
-    input[type="text"] { width: 100%; padding: 8px; margin-top: 6px; box-sizing: border-box; }
-    button { margin-top: 16px; padding: 8px 16px; cursor: pointer; }
-    #result { margin-top: 20px; white-space: pre-wrap; background: #f6f6f6; padding: 12px; border-radius: 6px; min-height: 20px; }
-    .hint { color: #777; font-size: 13px; margin-top: 4px; }
-    table { width: 100%; margin-top: 24px; border-collapse: collapse; }
-    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
-    th { font-size: 13px; color: #555; text-transform: uppercase; }
+    /* ── Reset & base ───────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .header-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 20px; flex-shrink: 0;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a1a2e;
+      letter-spacing: -0.3px;
+    }
+    .subtitle {
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 28px;
+    }
+
+    /* ── Card ───────────────────────────────────────────────── */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #9ca3af;
+      margin-bottom: 16px;
+    }
+
+    /* ── Form ───────────────────────────────────────────────── */
+    .form-row {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 15px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      background: #fafafa;
+      color: #1a1a2e;
+      font-family: inherit;
+    }
+    input[type="text"]::placeholder { color: #b0b5bf; }
+    input[type="text"]:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+      background: #fff;
+    }
+    button[type="submit"] {
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: #fff;
+      white-space: nowrap;
+      transition: transform .1s, box-shadow .15s, opacity .15s;
+    }
+    button[type="submit"]:hover {
+      box-shadow: 0 4px 12px rgba(79,70,229,.3);
+      transform: translateY(-1px);
+    }
+    button[type="submit"]:active { transform: translateY(0); opacity: .9; }
+    button[type="submit"]:disabled {
+      opacity: .55; cursor: not-allowed; transform: none;
+      box-shadow: none;
+    }
+
+    /* ── Toast / result banner ──────────────────────────────── */
+    #result {
+      margin-top: 16px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.45;
+      display: none;           /* hidden when empty */
+      animation: slideIn .25s ease;
+    }
+    #result.visible { display: block; }
+    #result.info    { background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; }
+    #result.success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    #result.error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Table ──────────────────────────────────────────────── */
+    .table-wrapper { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    th {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #9ca3af;
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 2px solid #f0f2f5;
+    }
+    td {
+      padding: 12px 14px;
+      font-size: 14px;
+      color: #374151;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tbody tr { transition: background .12s; }
+    tbody tr:hover { background: #f9fafb; }
+
+    .symbol-badge {
+      display: inline-block;
+      background: #eef2ff;
+      color: #4338ca;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.3px;
+    }
+    .price-cell {
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+    .email-cell {
+      color: #6b7280;
+      font-size: 13px;
+    }
+    .date-cell {
+      color: #9ca3af;
+      font-size: 13px;
+    }
+
+    /* ── Empty state ────────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+    .empty-state-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 500px) {
+      .form-row { flex-direction: column; }
+      button[type="submit"] { width: 100%; }
+    }
   </style>
 </head>
 <body>
-  <h1>Stock Watchlist</h1>
-  <p class="hint">Enter a single ticker symbol. This sends exactly ONE call to the Massive API to fetch the latest price, then adds it to your watchlist.</p>
+  <div class="container">
 
-  <form id="stock-form">
-    <label for="symbol">Ticker symbol</label>
-    <input type="text" id="symbol" name="symbol" placeholder="AAPL" required>
-    <button type="submit">Add to watchlist</button>
-  </form>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-icon">&#9650;</div>
+      <h1>Stock Watchlist</h1>
+    </div>
+    <p class="subtitle">
+      Enter a ticker symbol to fetch its latest price from the Massive API and
+      add it to your personal watchlist stored in Lakebase.
+    </p>
 
-  <div id="result"></div>
+    <!-- Add-to-watchlist form -->
+    <div class="card">
+      <div class="card-title">Add symbol</div>
+      <form id="stock-form">
+        <div class="form-row">
+          <input type="text" id="symbol" name="symbol" placeholder="e.g. AAPL" required autocomplete="off">
+          <button type="submit" id="submit-btn">Add to watchlist</button>
+        </div>
+      </form>
+      <div id="result"></div>
+    </div>
 
-  <table id="watchlist-table">
-    <thead>
-      <tr>
-        <th>Symbol</th>
-        <th>Email</th>
-        <th>Latest price</th>
-        <th>Updated</th>
-      </tr>
-    </thead>
-    <tbody id="watchlist-body"></tbody>
-  </table>
+    <!-- Watchlist table -->
+    <div class="card">
+      <div class="card-title">Your watchlist</div>
+      <div class="table-wrapper">
+        <table id="watchlist-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Owner</th>
+              <th style="text-align:right">Latest price</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody id="watchlist-body">
+            <tr><td colspan="4">
+              <div class="empty-state">
+                <div class="empty-state-icon">&#128200;</div>
+                Loading watchlist&hellip;
+              </div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /container -->
 
   <script>
-    const form = document.getElementById("stock-form");
-    const resultEl = document.getElementById("result");
+    const form       = document.getElementById("stock-form");
+    const resultEl   = document.getElementById("result");
+    const submitBtn  = document.getElementById("submit-btn");
     const watchlistBody = document.getElementById("watchlist-body");
 
+    /* ── Helpers ─────────────────────────────────────────── */
+    function showResult(msg, type) {
+      resultEl.textContent = msg;
+      resultEl.className = "visible " + type;
+    }
+    function hideResult() {
+      resultEl.className = "";
+      resultEl.textContent = "";
+    }
+
+    /* ── Load watchlist ──────────────────────────────────── */
     async function loadWatchlist() {
       try {
         const resp = await fetch("/watchlist");
         const data = await resp.json();
         if (!resp.ok) {
-          resultEl.textContent = "Error loading watchlist: " + (data.error || resp.statusText);
+          showResult("Error loading watchlist: " + (data.error || resp.statusText), "error");
           return;
         }
         watchlistBody.innerHTML = "";
+        if (data.length === 0) {
+          watchlistBody.innerHTML = `<tr><td colspan="4">
+            <div class="empty-state">
+              <div class="empty-state-icon">&#128269;</div>
+              No symbols yet &mdash; add one above!
+            </div>
+          </td></tr>`;
+          return;
+        }
         data.forEach((row) => {
           const tr = document.createElement("tr");
           const price = row.latest_price !== null && row.latest_price !== undefined
-            ? Number(row.latest_price).toFixed(2)
-            : "-";
-          const updated = row.updated_at ? new Date(row.updated_at).toLocaleString() : "-";
-          tr.innerHTML = `<td>${row.symbol}</td><td>${row.email || "-"}</td><td>${price}</td><td>${updated}</td>`;
+            ? "$" + Number(row.latest_price).toFixed(2)
+            : "&ndash;";
+          const updated = row.updated_at
+            ? new Date(row.updated_at).toLocaleString(undefined, { dateStyle:"medium", timeStyle:"short" })
+            : "&ndash;";
+          tr.innerHTML = `
+            <td><span class="symbol-badge">${row.symbol}</span></td>
+            <td class="email-cell">${row.email || "&ndash;"}</td>
+            <td class="price-cell" style="text-align:right">${price}</td>
+            <td class="date-cell">${updated}</td>`;
           watchlistBody.appendChild(tr);
         });
       } catch (err) {
-        resultEl.textContent = "Failed to load watchlist: " + err;
+        showResult("Failed to load watchlist: " + err, "error");
       }
     }
 
+    /* ── Submit handler ──────────────────────────────────── */
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const symbol = document.getElementById("symbol").value;
-      resultEl.textContent = "Adding to watchlist...";
+      const symbolInput = document.getElementById("symbol");
+      const symbol = symbolInput.value.trim().toUpperCase();
+      if (!symbol) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Adding\u2026";
+      showResult("Fetching price for " + symbol + "\u2026", "info");
 
       try {
         const resp = await fetch("/watchlist", {
@@ -81,14 +329,17 @@
         });
         const data = await resp.json();
         if (!resp.ok) {
-          resultEl.textContent = "Error: " + (data.error || resp.statusText);
+          showResult(data.error || resp.statusText, "error");
           return;
         }
-        resultEl.textContent = "Added " + data.symbol + " at price " + data.latest_price;
-        document.getElementById("symbol").value = "";
+        showResult("\u2714 Added " + data.symbol + " at $" + Number(data.latest_price).toFixed(2), "success");
+        symbolInput.value = "";
         loadWatchlist();
       } catch (err) {
-        resultEl.textContent = "Request failed: " + err;
+        showResult("Request failed: " + err, "error");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Add to watchlist";
       }
     });
 
