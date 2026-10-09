@@ -184,6 +184,26 @@
       font-size: 13px;
     }
 
+    /* ── Delete button ────────────────────────────────────── */
+    .delete-btn {
+      background: none;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 6px;
+      color: #9ca3af;
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+      padding: 4px 8px;
+      transition: color .12s, border-color .12s, background .12s;
+    }
+    .delete-btn:hover {
+      color: #dc2626;
+      border-color: #fca5a5;
+      background: #fef2f2;
+    }
+    .delete-btn:active { opacity: .7; }
+    .delete-btn:disabled { opacity: .4; cursor: not-allowed; }
+
     /* ── Empty state ────────────────────────────────────────── */
     .empty-state {
       text-align: center;
@@ -239,10 +259,11 @@
               <th>Owner</th>
               <th style="text-align:right">Latest price</th>
               <th>Updated</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="watchlist-body">
-            <tr><td colspan="4">
+            <tr><td colspan="5">
               <div class="empty-state">
                 <div class="empty-state-icon">&#128200;</div>
                 Loading watchlist&hellip;
@@ -282,7 +303,7 @@
         }
         watchlistBody.innerHTML = "";
         if (data.length === 0) {
-          watchlistBody.innerHTML = `<tr><td colspan="4">
+          watchlistBody.innerHTML = `<tr><td colspan="5">
             <div class="empty-state">
               <div class="empty-state-icon">&#128269;</div>
               No symbols yet &mdash; add one above!
@@ -302,7 +323,8 @@
             <td><span class="symbol-badge">${row.symbol}</span></td>
             <td class="email-cell">${row.email || "&ndash;"}</td>
             <td class="price-cell" style="text-align:right">${price}</td>
-            <td class="date-cell">${updated}</td>`;
+            <td class="date-cell">${updated}</td>
+            <td><button class="delete-btn" data-symbol="${row.symbol}" title="Remove ${row.symbol}">&times;</button></td>`;
           watchlistBody.appendChild(tr);
         });
       } catch (err) {
@@ -340,6 +362,30 @@
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = "Add to watchlist";
+      }
+    });
+
+    /* ── Delete handler (event delegation) ────────────── */
+    watchlistBody.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".delete-btn");
+      if (!btn) return;
+      const symbol = btn.dataset.symbol;
+      if (!confirm("Remove " + symbol + " from your watchlist?")) return;
+
+      btn.disabled = true;
+      try {
+        const resp = await fetch("/watchlist/" + encodeURIComponent(symbol), { method: "DELETE" });
+        const data = await resp.json();
+        if (!resp.ok) {
+          showResult(data.error || resp.statusText, "error");
+          return;
+        }
+        showResult("Removed " + symbol + " from watchlist", "info");
+        loadWatchlist();
+      } catch (err) {
+        showResult("Delete failed: " + err, "error");
+      } finally {
+        btn.disabled = false;
       }
     });
 
